@@ -38,7 +38,7 @@ elif mode == "master":
     output = subprocess.check_output("docker run --rm=true luogni/getit parsesite", shell=True)
     print "Find wanted files from index"
     f = save_data(output)
-    with open("/root/lastindex.csv", "rb") as fl:
+    with open("/root/lastindex.csv", "wb") as fl:
         fl.write(output)
     output = subprocess.check_output("docker run --rm=true -v /srv/getit.ini:/getit.ini -v %s:/getitlist.csv luogni/getit getcmds" % f, shell=True)
     for l in output.split('\n'):

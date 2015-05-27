@@ -23,7 +23,8 @@ def parse_episode(name):
 
 
 config = ConfigParser.RawConfigParser()
-config.read(['/getit.ini', 'getit.ini'])
+configname = config.read(['/getit.ini', 'getit.ini'])[0]
+
 
 dls = {}
 for s in config.sections():
@@ -48,10 +49,10 @@ with open("/getitlist.csv") as f:
             if name.startswith(k):
                 if (dls[k] >= 0)or(dls[k] == TODO):
                     e = parse_episode(name)
-                    if e > dls[k]:
+                    if (e is not None)and(e > dls[k]):
                         output_cmd(config, dls, k, "TvShows", cmd, e)
                 else:
                     output_cmd(config, dls, k, "Movies", cmd, DONE)
 
-with open('getit.ini', 'wb') as f:
+with open(configname, 'wb') as f:
     config.write(f)
