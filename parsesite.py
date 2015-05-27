@@ -1,8 +1,10 @@
+#!/usr/bin/python
+
 import lxml.html
-import sys
 import requests
 import csv
 import re
+import cStringIO
 
 
 URLS = ["http://www.altatechnology.net/",
@@ -21,7 +23,6 @@ def find_url_wordpress(urls):
                 p = lxml.html.parse(c.get('href')).getroot()
                 for c in p.cssselect('a'):
                     if c.get('href').find('maleficent') >= 0:
-                        print "URL", c.get('href')
                         r = requests.get(c.get('href') + '/completa')
                         return r.content
     return None
@@ -37,15 +38,15 @@ def parse_index(data):
 
 
 def main():
-    destfile = sys.argv[1]
     data = find_url_wordpress(URLS)
     if data:
         files = parse_index(data)
         if files:
-            with open(destfile, "wb") as f:
-                c = csv.writer(f)
-                for k in sorted(files.keys()):
-                    c.writerow([k, files[k]])
+            ss = cStringIO.StringIO()
+            c = csv.writer(ss)
+            for k in sorted(files.keys()):
+                c.writerow([k, files[k]])
+            print ss.getvalue()
 
 if __name__ == '__main__':
     main()
