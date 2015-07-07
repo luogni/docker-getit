@@ -8,10 +8,10 @@ TODO = -2  # used for movies
 DONE = -1
 
 
-def output_cmd(config, dls, k, where, cmd, e):
+def output_cmd(config, dls, k, where, cmd, e, name, cmdtype):
     dls[k] = e
     config.set(k, "last", e)
-    print "%s|%s" % (where, cmd)
+    print "%s|%s|%s|%s" % (where, cmdtype, name, cmd)
 
 
 def parse_episode(name):
@@ -41,18 +41,18 @@ with open("/getitlist.csv") as f:
     c = csv.reader(f)
     for line in c:
         try:
-            (name, cmd) = line
+            (name, cmdtype, cmd) = line
         except:
             continue
         done = []
         for k in keys:
             if name.startswith(k):
-                if (dls[k] >= 0)or(dls[k] == TODO):
+                if (dls[k] >= 0):
                     e = parse_episode(name)
                     if (e is not None)and(e > dls[k]):
-                        output_cmd(config, dls, k, "TvShows", cmd, e)
-                else:
-                    output_cmd(config, dls, k, "Movies", cmd, DONE)
+                        output_cmd(config, dls, k, "TvShows", cmd, e, name, cmdtype)
+                elif (dls[k] == TODO):
+                    output_cmd(config, dls, k, "Movies", cmd, DONE, name, cmdtype)
 
 with open(configname, 'wb') as f:
     config.write(f)

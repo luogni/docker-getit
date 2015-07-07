@@ -1,11 +1,15 @@
 #!/usr/bin/python
 
-import os
+import os.path
 import subprocess
 import sys
 import tempfile
 
 TEMPFILES = []
+WDAVURL = "http://127.0.0.1:8080/seafdav"
+WDAVMOUNT = "/srv/seafdav"
+INIPATH = os.path.join(WDAVMOUNT, "Self", "getit.ini")
+LASTPATH = os.path.join(WDAVMOUNT, "Self", "lastindex.csv")
 
 
 def save_data(output):
@@ -17,9 +21,16 @@ def save_data(output):
     return f
 
 
+def init_data():
+    clean_data()
+    os.system("mount -t davfs %s %s" % (WDAVURL, WDAVMOUNT))
+    os.system("chmod a+w %s" % INIPATH)
+
+
 def clean_data():
     for f in TEMPFILES:
         os.unlink(f)
+    os.system("umount %s" % WDAVMOUNT)
 
 
 try:
@@ -35,20 +46,24 @@ elif mode == "getcmds":
 
 elif mode == "master":
     print "Get and parse index"
-    output = subprocess.check_output("docker run --rm=true luogni/getit parsesite", shell=True)
+    init_data()
+    output = subprocess.check_output("docker run --rm=true -v %s:/getit.ini luogni/getit parsesite" % (INIPATH), shell=True)
     print "Find wanted files from index"
     f = save_data(output)
-    with open("/root/lastindex.csv", "wb") as fl:
+    with open(LASTPATH, "wb") as fl:
         fl.write(output)
-    output = subprocess.check_output("docker run --rm=true -v /srv/getit.ini:/getit.ini -v %s:/getitlist.csv luogni/getit getcmds" % f, shell=True)
+    output = subprocess.check_output("docker run --rm=true -v %s:/getit.ini -v %s:/getitlist.csv luogni/getit getcmds" % (INIPATH, f), shell=True)
     for l in output.split('\n'):
         l = l.strip()
         if not l:
             continue
-        (dst, cmd) = l.split('|', 1)
+        (dst, cmdtype, fkey, cmd) = l.split('|', 3)
         print "Getting", l
-        f = save_data(cmd)
-        os.system("docker run -ti --rm=true -v %s:/getitcmd.txt -v /srv/plex/media/%s:/weemedia luogni/getit-irc -- -r \"/connect irc.oltreirc.net; /set xfer.file.auto_accept_files on; /set xfer.file.download_path /weemedia/; /set xfer.file.use_nick_in_filename off; /python load /home/weechat/wdl.py;\"" % (f, dst))
+        if cmdtype == 'download':
+            os.system("docker run -ti --rm=true -v /srv/plex/media/%s:/download luogni/getit-download %s" % (dst, cmd))
+        elif cmdtype == 'irc':
+            f = save_data(cmd)
+            os.system("docker run -ti --rm=true -v %s:/getitcmd.txt -v /srv/plex/media/%s:/weemedia luogni/getit-irc -- -r \"/connect irc.oltreirc.net; /set xfer.file.auto_accept_files on; /set xfer.file.download_path /weemedia/; /set xfer.file.use_nick_in_filename off; /python load /home/weechat/wdl.py;\"" % (f, dst))
     print "Refresh Plex library"
     os.system("docker exec plex ./Plex\ Media\ Scanner --scan --refresh")
     clean_data()
